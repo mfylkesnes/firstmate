@@ -1,0 +1,8 @@
+fm-contributions rc=0 ok - retire is idempotent and refuses non-captain, unknown, malformed and signal-bearing pairs
+fm-commandcode-harness rc=1 (Use `node --trace-warnings ...` to show where the warning was created)
+fm-ensure-agents-md rc=0 ok - fm-ensure-agents-md.sh: refuses a case-variant lowercase agents.md (issue #389)
+fm-spawn-dispatch-profile rc=0 # all fm-spawn-dispatch-profile tests passed
+fm-spawn-batch rc=0 ok - projects/ paths are scoped through the firstmate home for single-task spawn
+fm-spawn-worktree-settle rc=0 # all fm-spawn-worktree-settle tests passed
+fm-spawn-pool-base-freshen rc=0 # all fm-spawn-pool-base-freshen tests passed
+fm-gitignore-config rc=0 ok - scratchpad2/ does not make git status --porcelain dirty
