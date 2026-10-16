@@ -79,7 +79,7 @@ done
 pass "composer placeholder, draft safety, identity-scoped ceiling, and independent delivery signals"
 
 drive_mod() {  # <event> <stopReason|-> [option-overrides-json]
-  MOD="$ROOT/bin/fm-commandcode-mod.ts" EVENT="$1" STOP="$2" OPTS="${3:-}" node --input-type=module 2>&1 <<'EOF'
+  NODE_NO_WARNINGS=1 MOD="$ROOT/bin/fm-commandcode-mod.ts" EVENT="$1" STOP="$2" OPTS="${3:-}" node --input-type=module 2>&1 <<'EOF'
 import { pathToFileURL } from "node:url";
 const mod = await import(pathToFileURL(process.env.MOD).href);
 const flags = {};
