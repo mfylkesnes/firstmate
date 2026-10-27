@@ -566,6 +566,11 @@ Exercise Antigravity dispatch.
 
 ## Firstmate spec
 Verify launch and delivery behavior.
+
+Outcome: the behavior under test holds.
+Rawest source: the fixture brief.
+Expert method: the real spawn path.
+Outside check: the spawn result.
 EOF
   printf 'agy\n' > "$home/config/crew-harness"
   mkdir -p "$home/.gemini/antigravity-cli"

@@ -53,6 +53,11 @@ Exercise backend dispatch for $2.
 
 ## Firstmate spec
 Verify backend selection without changing task intent.
+
+Outcome: the behavior under test holds.
+Rawest source: the fixture brief.
+Expert method: the real spawn path.
+Outside check: the spawn result.
 EOF
 }
 

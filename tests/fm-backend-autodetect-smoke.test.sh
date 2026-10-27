@@ -103,6 +103,11 @@ Exercise Herdr backend auto-detection.
 
 ## Firstmate spec
 Verify the real spawn path selects Herdr.
+
+Outcome: the behavior under test holds.
+Rawest source: the fixture brief.
+Expert method: the real spawn path.
+Outside check: the spawn result.
 EOF
 
 PROJ="$TMP_ROOT/scratch-project"

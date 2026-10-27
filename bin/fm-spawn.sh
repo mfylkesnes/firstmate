@@ -21,7 +21,11 @@
 #   guessed posture. A
 #   ship or scout spawn also refuses leftover `{TASK}` / `{FIRSTMATE_SPEC}`
 #   placeholders, an empty Task, an incomplete pair of Task subsections, or a
-#   `## Captain's intent` line opening with a Captain label or address.
+#   `## Captain's intent` line opening with a Captain label or address. A first
+#   ship or scout spawn also refuses a `## Firstmate spec` whose Outcome,
+#   Rawest source, Expert method, or Outside check line is missing, or whose
+#   spec depth lines still hold a placeholder (bin/fm-dod-lib.sh owns those
+#   lines); a relaunch skips that check.
 #   Every ship or scout spawn renders `launch-brief.md`; for a no-mistakes ship
 #   it also carries the current `--intent` contract and the extracted captain
 #   intent. A legacy mixed Task is accepted there only under bin/fm-dod-lib.sh's
@@ -3379,6 +3383,12 @@ if [ "$KIND" = ship ] || [ "$KIND" = scout ]; then
   fi
   if ! fm_brief_task_content_valid "$BRIEF"; then
     echo "error: $BRIEF must contain nonempty ## Captain's intent and ## Firstmate spec subsections (or a nonempty legacy # Task body) before spawn" >&2
+    exit 1
+  fi
+  # A relaunch resumes a brief its first spawn already accepted, so one written
+  # before the spec depth lines existed still recovers.
+  if [ "$RELAUNCH" -eq 0 ] && UNFILLED_DEPTH=$(fm_brief_spec_depth_unfilled "$BRIEF"); then
+    echo "error: $BRIEF ## Firstmate spec must fill its Outcome:, Rawest source:, Expert method:, and Outside check: lines and replace every spec depth placeholder before spawn; unfilled: $(printf '%s' "$UNFILLED_DEPTH" | paste -sd, - | sed 's/,/, /g')" >&2
     exit 1
   fi
   if ADDRESS_LINE=$(fm_brief_intent_address_line "$BRIEF"); then

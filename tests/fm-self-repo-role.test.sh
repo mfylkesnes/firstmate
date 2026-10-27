@@ -533,7 +533,7 @@ write_ship_brief() {  # <home> <id> [<contract-extras>]
   local home=$1 id=$2 extras=${3:-}
   mkdir -p "$home/data/$id"
   {
-    printf 'You are a crewmate.\n\n# Task\n## Captain'\''s intent\nExercise the role gate.\n\n## Firstmate spec\nVerify the boundary.\n\n# Definition of done\n'
+    printf 'You are a crewmate.\n\n# Task\n## Captain'\''s intent\nExercise the role gate.\n\n## Firstmate spec\nVerify the boundary.\n\nOutcome: the behavior under test holds.\nRawest source: the fixture brief.\nExpert method: the real spawn path.\nOutside check: the spawn result.\n\n# Definition of done\n'
     printf 'Delivery contract: mode=no-mistakes%s\nShip branch: fm/%s\n' "$extras" "$id"
   } > "$home/data/$id/brief.md"
 }
@@ -633,7 +633,7 @@ test_promote_gate_on_self_repo() {
   meta="$home/state/promote-r1.meta"
   printf 'window=fm-promote-r1\nkind=scout\nproject=%s\nworktree=/tmp/wt\n' "$ROOT" > "$meta"
   mkdir -p "$home/data/promote-r1"
-  printf 'You are a crewmate.\n\n# Task\n## Captain'\''s intent\nInvestigate a firstmate bug.\n\n## Firstmate spec\nReport findings.\n' \
+  printf 'You are a crewmate.\n\n# Task\n## Captain'\''s intent\nInvestigate a firstmate bug.\n\n## Firstmate spec\nReport findings.\n\nOutcome: the behavior under test holds.\nRawest source: the fixture brief.\nExpert method: the real spawn path.\nOutside check: the spawn result.\n' \
     > "$home/data/promote-r1/brief.md"
 
   out=$(FM_HOME="$home" FM_STATE_OVERRIDE="$home/state" FM_DATA_OVERRIDE="$home/data" \

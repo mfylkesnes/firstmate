@@ -195,7 +195,7 @@ EOF
 # one of these DOD blocks, since a broken heredoc corrupts or empties the
 # generated brief content, not just the script's own syntax.
 test_ship_modes_generate_clean_briefs() {
-  local home id mode brief status
+  local home id mode brief status depth
   home="$TMP_ROOT/ship-home"
   write_registry "$home"
 
@@ -211,6 +211,9 @@ test_ship_modes_generate_clean_briefs() {
       || fail "$id: brief did not record its machine-readable delivery contract line"
     assert_grep "{TASK}" "$brief" "$id: brief missing the {TASK} placeholder"
     assert_grep "{FIRSTMATE_SPEC}" "$brief" "$id: brief missing the {FIRSTMATE_SPEC} placeholder"
+    for depth in 'Outcome: {OUTCOME}' 'Rawest source: {RAWEST_SOURCE}' 'Expert method: {EXPERT_METHOD}' 'Target:' 'Outside check: {OUTSIDE_CHECK}'; do
+      grep -qxF "$depth" "$brief" || fail "$id: brief missing the spec depth line '$depth'"
+    done
     assert_grep "## Captain's intent" "$brief" "$id: brief missing Captain's intent subsection"
     assert_grep "## Firstmate spec" "$brief" "$id: brief missing Firstmate spec subsection"
     assert_grep 'never a bare number such as "PR 108"' "$brief" "$id: brief missing the full-PR-URL rule"
@@ -1085,7 +1088,7 @@ ROWS
 
 # Scout and secondmate paths still scaffold well-formed briefs.
 test_scout_and_secondmate_scaffold() {
-  local brief
+  local brief depth
   FM_HOME="$BRIEF_HOME" "$ROOT/bin/fm-brief.sh" brief-scout-q6 alpha --scout >/dev/null 2>&1 \
     || fail "fm-brief.sh scout scaffold exited non-zero"
   brief="$BRIEF_HOME/data/brief-scout-q6/brief.md"
@@ -1095,6 +1098,9 @@ test_scout_and_secondmate_scaffold() {
   assert_grep "## Captain's intent" "$brief" "scout brief missing Captain's intent subsection"
   assert_grep "## Firstmate spec" "$brief" "scout brief missing Firstmate spec subsection"
   assert_grep "{FIRSTMATE_SPEC}" "$brief" "scout brief missing the spec placeholder"
+  for depth in 'Outcome: {OUTCOME}' 'Rawest source: {RAWEST_SOURCE}' 'Expert method: {EXPERT_METHOD}' 'Target:' 'Outside check: {OUTSIDE_CHECK}'; do
+    grep -qxF "$depth" "$brief" || fail "scout brief missing the spec depth line '$depth'"
+  done
 
   FM_SECONDMATE_CHARTER='Supervise the alpha domain.' \
     FM_HOME="$BRIEF_HOME" "$ROOT/bin/fm-brief.sh" brief-sm-q6 --secondmate alpha >/dev/null 2>&1 \

@@ -35,6 +35,18 @@ Classify the deliverable:
 - A diagnostic request, report, recommendation, or implementation-ready finding is evidence, not authorization to change code.
 - Load `diagnostic-reasoning` before scoping a reported bug and before acting on a diagnostic report.
 
+Do the deeper version of every non-trivial task by default.
+Skip this for a trivial or mechanical ask - a typo, a rename, a version bump, a rerun, a status question, or a follow-up inside work already scoped - and whenever the deeper version would only restate the ask.
+Otherwise the first captain-facing reply on the task states, in a few short lines:
+
+- The outcome it works toward: the goal behind the task, ideally a durable setup that keeps it true.
+- The deeper version it will do: a top professional's method, the rawest material, an ambitious but specific target, the beliefs behind the ask tested against raw data, and an outside judge, neither firstmate nor the captain, of whether the result is right.
+- Range, where it helps: another discipline's view or a red team, with the task described as a verb rather than a noun.
+
+Then proceed without waiting for a reply.
+Ask the captain first only when the deeper version materially changes cost or risk, or touches anything outward-facing, destructive, or money-moving; every other approval rule still applies.
+Firstmate puts the depth into the brief's spec depth lines (section 11) rather than into `## Captain's intent`, and workers never widen scope on their own.
+
 Resolve every ship task's concrete delivery mode and `yolo` merge posture at intake.
 Pass the mode explicitly to the brief, and pass both values explicitly to the spawn and any scout promotion; each command refuses to guess the values it consumes.
 A current explicit captain instruction wins; otherwise the project's registry entry is the captain's standing posture, and dropping below its rigor needs a reason you can state.

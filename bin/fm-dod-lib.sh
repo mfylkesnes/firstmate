@@ -223,13 +223,129 @@ fm_ship_rule_one() {  # <no-mistakes|direct-PR|local-only> <task-id> [branch] [<
   esac
 }
 
+# The spec depth lines are the single owner of what every ship and scout
+# `## Firstmate spec` names besides its build instructions, so the brief carries
+# the deeper version of the task by default: the outcome (the goal behind the
+# task, ideally a durable setup that keeps it true), the rawest source to start
+# from, the expert method a top professional would use, an ambitious but
+# specific target, and an outside check run against reality (a reconciliation,
+# a real run, a count from the records), never the worker's own self-review.
+# An optional range line names another discipline's view or a red team when
+# one helps. bin/fm-brief.sh scaffolds every line marked scaffolded from
+# fm_brief_spec_depth_scaffold; only the required lines carry a placeholder, and
+# the optional Target line is scaffolded empty. bin/fm-spawn.sh refuses a first
+# ship or scout spawn while fm_brief_spec_depth_unfilled names any required line
+# that is missing, empty, or still holds its placeholder.
+# Each record is `<label>|<placeholder>|<required: 1 or 0>|<scaffolded: 1 or 0>`.
+fm_brief_spec_depth_fields() {
+  printf '%s\n' \
+    'Outcome|{OUTCOME}|1|1' \
+    'Rawest source|{RAWEST_SOURCE}|1|1' \
+    'Expert method|{EXPERT_METHOD}|1|1' \
+    'Target||0|1' \
+    'Outside check|{OUTSIDE_CHECK}|1|1' \
+    'Range||0|0'
+}
+
+fm_brief_spec_depth_scaffold() {
+  local label placeholder _required scaffolded
+  while IFS='|' read -r label placeholder _required scaffolded; do
+    [ "$scaffolded" = 1 ] || continue
+    if [ -n "$placeholder" ]; then printf '%s: %s\n' "$label" "$placeholder"; else printf '%s:\n' "$label"; fi
+  done < <(fm_brief_spec_depth_fields)
+}
+
+# Read a Task subsection body on stdin and either print every line that is not
+# a spec depth line (strip), or print each depth label that is required but
+# missing or empty, or that still holds its placeholder (unfilled; exits 1 when
+# there is none). A label line inside a ``` or ~~~ fence or an indented code
+# block is never a depth line, and a leading `-` or `*` list marker is accepted.
+# BSD awk refuses a newline in a -v value, so the fields arrive by environment.
+fm_brief_spec_depth_scan() {  # <strip|unfilled>
+  FM_SPEC_DEPTH_FIELDS=$(fm_brief_spec_depth_fields) awk -v mode="$1" '
+    BEGIN {
+      n = split(ENVIRON["FM_SPEC_DEPTH_FIELDS"], records, "\n")
+      for (i = 1; i <= n; i++) {
+        split(records[i], field, "|")
+        label[i] = field[1]
+        placeholder[i] = field[2]
+        required[i] = field[3]
+      }
+    }
+    {
+      scan = $0
+      spaces = 0
+      while (spaces < 3 && substr(scan, 1, 1) == " ") {
+        scan = substr(scan, 2)
+        spaces++
+      }
+      marker = substr(scan, 1, 1)
+      marker_len = 0
+      if (marker == "`" || marker == "~") {
+        while (substr(scan, marker_len + 1, 1) == marker) marker_len++
+      }
+      if (marker_len >= 3) {
+        if (!fenced) {
+          fenced = 1
+          fence_marker = marker
+          fence_len = marker_len
+        } else if (marker == fence_marker && marker_len >= fence_len && substr(scan, marker_len + 1) ~ /^[[:space:]]*$/) {
+          fenced = 0
+        }
+        if (mode == "strip") print
+        next
+      }
+      if (fenced || substr(scan, 1, 1) ~ /^[ \t]$/) {
+        if (mode == "strip") print
+        next
+      }
+      sub(/^[-*][[:space:]]+/, "", scan)
+      depth = 0
+      for (i = 1; i <= n; i++) {
+        prefix = label[i] ":"
+        if (substr(scan, 1, length(prefix)) != prefix) continue
+        depth = 1
+        value = substr(scan, length(prefix) + 1)
+        if (placeholder[i] != "" && index(value, placeholder[i])) stale[i] = 1
+        else if (value ~ /[^[:space:]]/) filled[i] = 1
+      }
+      if (mode == "strip" && !depth) print
+    }
+    END {
+      if (mode == "strip") exit 0
+      for (i = 1; i <= n; i++) {
+        if (stale[i] || (required[i] && !filled[i])) {
+          print label[i]
+          missing = 1
+        }
+      }
+      exit !missing
+    }
+  '
+}
+
+# Print each spec depth label a brief leaves unfilled, one per line, and
+# succeed; fail when every required line is filled and no placeholder remains.
+# The lines are read from `## Firstmate spec`, or from a legacy brief's
+# `# Task` body.
+fm_brief_spec_depth_unfilled() {  # <file>
+  local file=$1 body
+  if fm_brief_task_heading_present "$file" "## Firstmate spec"; then
+    body=$(fm_brief_task_heading_body "$file" "## Firstmate spec")
+  else
+    body=$(fm_brief_heading_body "$file" "# Task")
+  fi
+  printf '%s\n' "$body" | fm_brief_spec_depth_scan unfilled
+}
+
 # Return 0 when a Task subsection still consists only of its scaffold
-# placeholder. A missing file and legacy briefs carry no such placeholders.
+# placeholder, ignoring the spec depth lines. A missing file and legacy briefs
+# carry no such placeholders.
 fm_brief_task_placeholders_present() {  # <file>
   local file=$1 intent spec
   [ -f "$file" ] || return 1
   intent=$(fm_brief_task_heading_body "$file" "## Captain's intent")
-  spec=$(fm_brief_task_heading_body "$file" "## Firstmate spec")
+  spec=$(fm_brief_task_heading_body "$file" "## Firstmate spec" | fm_brief_spec_depth_scan strip)
   [ "$(printf '%s' "$intent" | tr -d '[:space:]')" = '{TASK}' ] && return 0
   [ "$(printf '%s' "$spec" | tr -d '[:space:]')" = '{FIRSTMATE_SPEC}' ] && return 0
   return 1

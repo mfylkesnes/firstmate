@@ -288,6 +288,11 @@ $intent
 
 ## Firstmate spec
 Exercise the spawn behavior under test.
+
+Outcome: the behavior under test holds.
+Rawest source: the fixture brief.
+Expert method: drive the real spawn path.
+Outside check: the test's own assertions.
 EOF
 }
 

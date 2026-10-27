@@ -140,6 +140,11 @@ Exercise Muse dispatch.
 
 ## Firstmate spec
 Verify the Muse harness behavior under test.
+
+Outcome: the behavior under test holds.
+Rawest source: the fixture brief.
+Expert method: the real spawn path.
+Outside check: the spawn result.
 EOF
   fm_git_worktree "$proj" "$wt" "fm/$id"
   touch "$home/state/.last-watcher-beat"

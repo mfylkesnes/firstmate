@@ -89,6 +89,11 @@ Exercise backlog dispatch for $id.
 ## Firstmate spec
 Verify the atomic backlog transition.
 
+Outcome: the behavior under test holds.
+Rawest source: the fixture brief.
+Expert method: the real spawn path.
+Outside check: the spawn result.
+
 # Definition of done
 Delivery contract: mode=no-mistakes
 EOF

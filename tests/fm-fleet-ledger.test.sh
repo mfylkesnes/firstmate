@@ -49,6 +49,11 @@ Exercise the fleet ledger for $TASK.
 
 ## Firstmate spec
 Nothing to build.
+
+Outcome: the behavior under test holds.
+Rawest source: the fixture brief.
+Expert method: the real spawn path.
+Outside check: the spawn result.
 EOF
   FAKEBIN=$(make_fakebin "$dir")
 }
