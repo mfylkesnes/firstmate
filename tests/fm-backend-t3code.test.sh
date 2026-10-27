@@ -157,6 +157,10 @@ Exercise T3 dispatch.
 
 ## Firstmate spec
 Verify the T3 lifecycle behavior under test.
+Outcome: the behavior under test holds.
+Rawest source: the fixture brief.
+Expert method: the real spawn path.
+Outside check: the spawn result.
 EOF
 }
 
