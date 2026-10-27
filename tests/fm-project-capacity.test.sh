@@ -36,6 +36,11 @@ Run the project's heavy suite for $2.
 ## Firstmate spec
 Exercise project capacity admission.
 
+Outcome: the behavior under test holds.
+Rawest source: the fixture brief.
+Expert method: the real spawn path.
+Outside check: the spawn result.
+
 # Definition of done
 Delivery contract: mode=no-mistakes
 EOF

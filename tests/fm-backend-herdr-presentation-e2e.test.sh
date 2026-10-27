@@ -410,6 +410,11 @@ $description
 
 ## Firstmate spec
 Verify projected workspace behavior for $id.
+
+Outcome: the behavior under test holds.
+Rawest source: the fixture brief.
+Expert method: the real spawn path.
+Outside check: the spawn result.
 EOF
 }
 

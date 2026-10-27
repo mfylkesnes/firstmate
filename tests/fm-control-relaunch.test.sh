@@ -197,6 +197,8 @@ new_case() {
 }
 
 # add_ship_task <case-dir> <id> [harness] [session]
+# The brief deliberately has no spec depth lines: a relaunch resumes a brief its
+# first spawn already accepted, so one written before those lines must recover.
 add_ship_task() {
   local dir=$1 id=$2 harness=${3:-claude} ses=${4:-fmses}
   local home="$dir/home" proj="$dir/proj" wt="$dir/wt"

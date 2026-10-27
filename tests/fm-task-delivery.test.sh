@@ -47,16 +47,33 @@ write_brief() {  # <home> <id> [<recorded-mode>]
   local home=$1 id=$2 mode=${3:-}
   mkdir -p "$home/data/$id"
   {
-    printf 'You are a crewmate.\n\n# Task\n## Captain'\''s intent\nExercise the delivery contract.\n\n## Firstmate spec\nVerify the selected delivery behavior.\n\n# Definition of done\n'
+    printf 'You are a crewmate.\n\n# Task\n## Captain'\''s intent\nExercise the delivery contract.\n\n## Firstmate spec\nVerify the selected delivery behavior.\n\nOutcome: the behavior under test holds.\nRawest source: the fixture brief.\nExpert method: the real spawn path.\nOutside check: the spawn result.\n\n# Definition of done\n'
     [ -z "$mode" ] || printf 'Delivery contract: mode=%s\n' "$mode"
   } > "$home/data/$id/brief.md"
 }
 
 fill_brief_subsections() {  # <file> <intent> <spec>
+  local file=$1 intent=$2 spec=$3
+  fill_brief_task_only "$file" "$intent" "$spec"
+  fill_brief_depth_lines "$file"
+}
+
+fill_brief_task_only() {  # <file> <intent> <spec>
   local file=$1 intent=$2 spec=$3 content
   content=$(cat "$file")
   content=${content//'{TASK}'/$intent}
   content=${content//'{FIRSTMATE_SPEC}'/$spec}
+  printf '%s\n' "$content" > "$file"
+}
+
+fill_brief_depth_lines() {  # <file>
+  local file=$1 content
+  content=$(cat "$file")
+  content=${content//'{OUTCOME}'/the report totals stay right}
+  content=${content//'{RAWEST_SOURCE}'/the fixture records}
+  content=${content//'{EXPERT_METHOD}'/the standard method}
+  content=${content//'{TARGET}'/every total matches}
+  content=${content//'{OUTSIDE_CHECK}'/a count from the records}
   printf '%s\n' "$content" > "$file"
 }
 
@@ -631,6 +648,10 @@ EOF
 # Task
 [captain] Fix the legacy dispatch boundary.
 Do not copy this Firstmate-authored constraint into intent.
+Outcome: the behavior under test holds.
+Rawest source: the fixture brief.
+Expert method: the real spawn path.
+Outside check: the spawn result.
 
 # Definition of done
 Delivery contract: mode=no-mistakes
@@ -662,6 +683,10 @@ Fix the migrated dispatch boundary.
 
 ## Firstmate spec
 Preserve the existing compatibility path.
+Outcome: the behavior under test holds.
+Rawest source: the fixture brief.
+Expert method: the real spawn path.
+Outside check: the spawn result.
 
 # Definition of done
 Delivery contract: mode=no-mistakes
@@ -691,6 +716,10 @@ EOF
 # Task
 Fix the legacy dispatch boundary.
 Do not copy this Firstmate-authored constraint into intent.
+Outcome: the behavior under test holds.
+Rawest source: the fixture brief.
+Expert method: the real spawn path.
+Outside check: the spawn result.
 
 # Definition of done
 Delivery contract: mode=no-mistakes
@@ -887,6 +916,119 @@ EOF
   pass "fm-spawn/fm-promote: leftover Task placeholders are refused until both subsections are filled"
 }
 
+# A first ship or scout spawn refuses a Firstmate spec whose Outcome, Rawest
+# source, Expert method, or Outside check line is missing, empty, or fenced, or
+# whose spec depth lines still hold a placeholder, and names each unfilled line.
+# The optional Target line may be dropped and the optional Range line added;
+# a fully filled spec lets the spawn proceed past the check (the fake tmux
+# still fails later).
+test_spawn_requires_filled_spec_depth_lines() {
+  local rec home proj fakebin out status id brief refusal line
+  rec=$(make_home spec-depth)
+  IFS='|' read -r home proj fakebin <<EOF
+$rec
+EOF
+  refusal="must fill its Outcome:, Rawest source:, Expert method:, and Outside check: lines"
+
+  id=depth-unfilled-ship
+  FM_HOME="$home" "$BRIEF" "$id" proj --mode no-mistakes >/dev/null 2>&1 \
+    || fail "depth ship brief should scaffold"
+  brief="$home/data/$id/brief.md"
+  for line in 'Outcome: {OUTCOME}' 'Rawest source: {RAWEST_SOURCE}' 'Expert method: {EXPERT_METHOD}' 'Target: {TARGET}' 'Outside check: {OUTSIDE_CHECK}'; do
+    grep -qxF "$line" "$brief" || fail "ship scaffold did not emit the spec depth line '$line'"
+  done
+  fill_brief_task_only "$brief" "Fix the report totals." "Change only the totals query."
+  out=$(run_spawn "$home" "$fakebin" "$id" "$proj" claude --mode no-mistakes --yolo off)
+  status=$?
+  [ "$status" -ne 0 ] || fail "spawn with placeholder depth lines should exit non-zero"
+  assert_contains "$out" "$refusal" "placeholder depth lines were not refused"
+  assert_contains "$out" "unfilled: Outcome, Rawest source, Expert method, Target, Outside check" \
+    "the refusal did not name every unfilled depth line"
+  assert_not_contains "$out" "still contains {TASK} or {FIRSTMATE_SPEC}" \
+    "filled Task subsections were misread as leftover placeholders because of the depth lines"
+  assert_absent "$home/state/$id.meta" "depth-refused spawn wrote task metadata"
+
+  id=depth-partial-ship
+  FM_HOME="$home" "$BRIEF" "$id" proj --mode direct-PR >/dev/null 2>&1 \
+    || fail "partial depth ship brief should scaffold"
+  brief="$home/data/$id/brief.md"
+  fill_brief_subsections "$brief" "Fix the report totals." "Change only the totals query."
+  grep -v '^Expert method:\|^Target:' "$brief" > "$brief.tmp" && mv "$brief.tmp" "$brief"
+  sed 's/^Outside check: .*/Outside check:   /' "$brief" > "$brief.tmp" && mv "$brief.tmp" "$brief"
+  out=$(run_spawn "$home" "$fakebin" "$id" "$proj" claude --mode direct-PR --yolo off)
+  status=$?
+  [ "$status" -ne 0 ] || fail "spawn with a missing and an empty required depth line should exit non-zero"
+  assert_contains "$out" "unfilled: Expert method, Outside check" \
+    "a missing and an empty required depth line were not named alone"
+  assert_absent "$home/state/$id.meta" "partial-depth spawn wrote task metadata"
+
+  id=depth-stale-target-ship
+  FM_HOME="$home" "$BRIEF" "$id" proj --mode direct-PR >/dev/null 2>&1 \
+    || fail "stale-target ship brief should scaffold"
+  brief="$home/data/$id/brief.md"
+  fill_brief_task_only "$brief" "Fix the report totals." "Change only the totals query."
+  sed -e 's/{OUTCOME}/the totals stay right/' -e 's/{RAWEST_SOURCE}/the ledger/' \
+    -e 's/{EXPERT_METHOD}/reconcile/' -e 's/{OUTSIDE_CHECK}/a count from the records/' \
+    "$brief" > "$brief.tmp" && mv "$brief.tmp" "$brief"
+  out=$(run_spawn "$home" "$fakebin" "$id" "$proj" claude --mode direct-PR --yolo off)
+  status=$?
+  [ "$status" -ne 0 ] || fail "spawn with a leftover optional placeholder should exit non-zero"
+  assert_contains "$out" "unfilled: Target" "a leftover optional Target placeholder was not refused"
+
+  id=depth-fenced-ship
+  mkdir -p "$home/data/$id"
+  cat > "$home/data/$id/brief.md" <<'EOF'
+# Task
+## Captain's intent
+Fix the report totals.
+
+## Firstmate spec
+Change only the totals query.
+
+```text
+Outcome: an example inside a fence
+Rawest source: an example inside a fence
+Expert method: an example inside a fence
+Outside check: an example inside a fence
+```
+
+# Definition of done
+Delivery contract: mode=direct-PR
+EOF
+  out=$(run_spawn "$home" "$fakebin" "$id" "$proj" claude --mode direct-PR --yolo off)
+  status=$?
+  [ "$status" -ne 0 ] || fail "spawn whose depth lines exist only in a fence should exit non-zero"
+  assert_contains "$out" "$refusal" "fenced example depth lines satisfied the check"
+
+  id=depth-filled-ship
+  FM_HOME="$home" "$BRIEF" "$id" proj --mode direct-PR >/dev/null 2>&1 \
+    || fail "filled depth ship brief should scaffold"
+  brief="$home/data/$id/brief.md"
+  fill_brief_subsections "$brief" "Fix the report totals." "Change only the totals query."
+  grep -v '^Target:' "$brief" > "$brief.tmp" && mv "$brief.tmp" "$brief"
+  printf '%s\n' 'Range: a red team tries to break the totals.' >> "$brief"
+  out=$(run_spawn "$home" "$fakebin" "$id" "$proj" claude --mode direct-PR --yolo off)
+  assert_not_contains "$out" "$refusal" "a ship brief with every required depth line filled was refused"
+  assert_not_contains "$out" "must contain nonempty" "a fully filled ship brief failed content validation"
+
+  id=depth-unfilled-scout
+  FM_HOME="$home" "$BRIEF" "$id" proj --scout >/dev/null 2>&1 \
+    || fail "depth scout brief should scaffold"
+  brief="$home/data/$id/brief.md"
+  grep -qx 'Outcome: {OUTCOME}' "$brief" || fail "scout scaffold did not emit the depth lines"
+  fill_brief_task_only "$brief" "Find why the totals drift." "Report the cause only."
+  out=$(run_spawn "$home" "$fakebin" "$id" "$proj" claude --scout)
+  status=$?
+  [ "$status" -ne 0 ] || fail "scout spawn with placeholder depth lines should exit non-zero"
+  assert_contains "$out" "$refusal" "scout placeholder depth lines were not refused"
+  assert_absent "$home/state/$id.meta" "depth-refused scout spawn wrote task metadata"
+
+  fill_brief_depth_lines "$brief"
+  out=$(run_spawn "$home" "$fakebin" "$id" "$proj" claude --scout)
+  assert_not_contains "$out" "$refusal" "a scout brief with every depth line filled was refused"
+  pass "fm-spawn: a first ship or scout spawn requires filled Outcome, Rawest source, Expert method, and Outside check lines and no leftover depth placeholder"
+}
+
 # Exercise the serialized input a worker is told to pass to no-mistakes, not
 # just the presence of words somewhere in its much larger launch brief.
 # No live model or pipeline is needed: spawn publishes this exact input before
@@ -912,7 +1054,7 @@ EOF
   words=$(printf '%s\n' "Keep the literal example \`Captain, hello\` in the documentation." \
     "Stop composing Captain:, Captain's words:, Captain's ask:, and Captain's intent: into PR bodies.")
   write_brief "$home" intent-literal no-mistakes
-  printf '# Task\n## Captain'"'"'s intent\n%s\n\n## Firstmate spec\nDo not paraphrase.\n\n# Definition of done\nDelivery contract: mode=no-mistakes\n' "$words" > "$home/data/intent-literal/brief.md"
+  printf '# Task\n## Captain'"'"'s intent\n%s\n\n## Firstmate spec\nDo not paraphrase.\n\nOutcome: the behavior under test holds.\nRawest source: the fixture brief.\nExpert method: the real spawn path.\nOutside check: the spawn result.\n\n# Definition of done\nDelivery contract: mode=no-mistakes\n' "$words" > "$home/data/intent-literal/brief.md"
   out=$(run_spawn "$home" "$fakebin" intent-literal "$proj" claude --mode no-mistakes --yolo off)
   assert_not_contains "$out" "operator-address line" "labels mentioned mid-line were refused as address"
   authorized=$(awk '$0 == "## Captain intent authorized for --intent" { emit=1; next } emit { print }' "$home/data/intent-literal/launch-brief.md")
@@ -923,7 +1065,7 @@ EOF
     n=$((n + 1))
     id="intent-addressed-$n"
     write_brief "$home" "$id" no-mistakes
-    printf '# Task\n## Captain'"'"'s intent\nKeep the original request intact.\n  %s preserve its provenance.\n\n## Firstmate spec\nDo not paraphrase.\n\n# Definition of done\nDelivery contract: mode=no-mistakes\n' \
+    printf '# Task\n## Captain'"'"'s intent\nKeep the original request intact.\n  %s preserve its provenance.\n\n## Firstmate spec\nDo not paraphrase.\n\nOutcome: the behavior under test holds.\nRawest source: the fixture brief.\nExpert method: the real spawn path.\nOutside check: the spawn result.\n\n# Definition of done\nDelivery contract: mode=no-mistakes\n' \
       "$marker" > "$home/data/$id/brief.md"
     out=$(run_spawn "$home" "$fakebin" "$id" "$proj" claude --mode no-mistakes --yolo off)
     status=$?
@@ -940,7 +1082,7 @@ EOF
   id='intent-addressed-promote'
   printf 'window=fm-%s\nkind=scout\nworktree=/tmp/wt\n' "$id" > "$home/state/$id.meta"
   write_brief "$home" "$id"
-  printf '# Task\n## Captain'"'"'s intent\nCaptain: investigate the refusal.\n\n## Firstmate spec\nReproduce it first.\n' > "$home/data/$id/brief.md"
+  printf '# Task\n## Captain'"'"'s intent\nCaptain: investigate the refusal.\n\n## Firstmate spec\nReproduce it first.\n\nOutcome: the behavior under test holds.\nRawest source: the fixture brief.\nExpert method: the real spawn path.\nOutside check: the spawn result.\n' > "$home/data/$id/brief.md"
   out=$(FM_HOME="$home" FM_STATE_OVERRIDE="$home/state" "$PROMOTE" "$id" --mode no-mistakes --yolo off 2>&1)
   status=$?
   [ "$status" -ne 0 ] || fail "promotion of addressed intent should be refused"
@@ -955,7 +1097,7 @@ EOF
     n=$((n + 1))
     id="intent-marked-$n"
     write_brief "$home" "$id" no-mistakes
-    printf '# Task\n%s %s\nDo not include this build constraint.\n%s %s\n\n# Definition of done\nDelivery contract: mode=no-mistakes\n' \
+    printf '# Task\n%s %s\nDo not include this build constraint.\n%s %s\nOutcome: the behavior under test holds.\nRawest source: the fixture brief.\nExpert method: the real spawn path.\nOutside check: the spawn result.\n\n# Definition of done\nDelivery contract: mode=no-mistakes\n' \
       "$marker" 'Keep the original request intact.' "$marker" 'Preserve its provenance.' > "$home/data/$id/brief.md"
     out=$(run_spawn "$home" "$fakebin" "$id" "$proj" claude --mode no-mistakes --yolo off)
     assert_present "$home/data/$id/launch-brief.md" "$marker: provenance was not accepted"
@@ -1702,5 +1844,6 @@ test_spawn_refuses_a_registry_forge_it_cannot_read
 test_promotion_carries_the_forge_binding
 test_forge_forgejo_rides_the_same_binding
 test_spawn_and_promote_require_filled_task_subsections
+test_spawn_requires_filled_spec_depth_lines
 test_project_mode_resolves_branch_prefix
 echo "# all fm-task-delivery tests passed"

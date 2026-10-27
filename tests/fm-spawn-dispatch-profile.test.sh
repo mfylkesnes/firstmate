@@ -2036,6 +2036,11 @@ test_worker_launch_delivers_role_scope() {
       content=$(cat "$brief")
       content=${content//'{TASK}'/brief for $id}
       content=${content//'{FIRSTMATE_SPEC}'/Exercise the spawn behavior under test.}
+      content=${content//'{OUTCOME}'/the launched role contract holds}
+      content=${content//'{RAWEST_SOURCE}'/the scaffolded brief}
+      content=${content//'{TARGET}'/every role line present}
+      content=${content//'{EXPERT_METHOD}'/the real spawn path}
+      content=${content//'{OUTSIDE_CHECK}'/the launched role contract}
       printf '%s\n' "$content" > "$brief"
     fi
     cp "$HOME_DIR/data/$id/brief.md" "$CASE_DIR/brief-before"
