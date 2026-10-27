@@ -72,7 +72,6 @@ fill_brief_depth_lines() {  # <file>
   content=${content//'{OUTCOME}'/the report totals stay right}
   content=${content//'{RAWEST_SOURCE}'/the fixture records}
   content=${content//'{EXPERT_METHOD}'/the standard method}
-  content=${content//'{TARGET}'/every total matches}
   content=${content//'{OUTSIDE_CHECK}'/a count from the records}
   printf '%s\n' "$content" > "$file"
 }
@@ -919,7 +918,8 @@ EOF
 # A first ship or scout spawn refuses a Firstmate spec whose Outcome, Rawest
 # source, Expert method, or Outside check line is missing, empty, or fenced, or
 # whose spec depth lines still hold a placeholder, and names each unfilled line.
-# The optional Target line may be dropped and the optional Range line added;
+# The optional Target line may be left as scaffolded or dropped and the optional
+# Range line added;
 # a fully filled spec lets the spawn proceed past the check (the fake tmux
 # still fails later).
 test_spawn_requires_filled_spec_depth_lines() {
@@ -934,7 +934,7 @@ EOF
   FM_HOME="$home" "$BRIEF" "$id" proj --mode no-mistakes >/dev/null 2>&1 \
     || fail "depth ship brief should scaffold"
   brief="$home/data/$id/brief.md"
-  for line in 'Outcome: {OUTCOME}' 'Rawest source: {RAWEST_SOURCE}' 'Expert method: {EXPERT_METHOD}' 'Target: {TARGET}' 'Outside check: {OUTSIDE_CHECK}'; do
+  for line in 'Outcome: {OUTCOME}' 'Rawest source: {RAWEST_SOURCE}' 'Expert method: {EXPERT_METHOD}' 'Target:' 'Outside check: {OUTSIDE_CHECK}'; do
     grep -qxF "$line" "$brief" || fail "ship scaffold did not emit the spec depth line '$line'"
   done
   fill_brief_task_only "$brief" "Fix the report totals." "Change only the totals query."
@@ -942,7 +942,7 @@ EOF
   status=$?
   [ "$status" -ne 0 ] || fail "spawn with placeholder depth lines should exit non-zero"
   assert_contains "$out" "$refusal" "placeholder depth lines were not refused"
-  assert_contains "$out" "unfilled: Outcome, Rawest source, Expert method, Target, Outside check" \
+  assert_contains "$out" "unfilled: Outcome, Rawest source, Expert method, Outside check" \
     "the refusal did not name every unfilled depth line"
   assert_not_contains "$out" "still contains {TASK} or {FIRSTMATE_SPEC}" \
     "filled Task subsections were misread as leftover placeholders because of the depth lines"
@@ -962,18 +962,29 @@ EOF
     "a missing and an empty required depth line were not named alone"
   assert_absent "$home/state/$id.meta" "partial-depth spawn wrote task metadata"
 
-  id=depth-stale-target-ship
+  id=depth-scaffolded-target-ship
   FM_HOME="$home" "$BRIEF" "$id" proj --mode direct-PR >/dev/null 2>&1 \
-    || fail "stale-target ship brief should scaffold"
+    || fail "scaffolded-target ship brief should scaffold"
   brief="$home/data/$id/brief.md"
   fill_brief_task_only "$brief" "Fix the report totals." "Change only the totals query."
   sed -e 's/{OUTCOME}/the totals stay right/' -e 's/{RAWEST_SOURCE}/the ledger/' \
     -e 's/{EXPERT_METHOD}/reconcile/' -e 's/{OUTSIDE_CHECK}/a count from the records/' \
     "$brief" > "$brief.tmp" && mv "$brief.tmp" "$brief"
+  grep -qx 'Target:' "$brief" || fail "the scaffolded Target line was not left empty"
+  out=$(run_spawn "$home" "$fakebin" "$id" "$proj" claude --mode direct-PR --yolo off)
+  assert_not_contains "$out" "$refusal" "an untouched Target line caused a depth refusal"
+
+  id=depth-stale-required-ship
+  FM_HOME="$home" "$BRIEF" "$id" proj --mode direct-PR >/dev/null 2>&1 \
+    || fail "stale-required ship brief should scaffold"
+  brief="$home/data/$id/brief.md"
+  fill_brief_task_only "$brief" "Fix the report totals." "Change only the totals query."
+  sed -e 's/{OUTCOME}/the totals stay right/' -e 's/{RAWEST_SOURCE}/the ledger/' \
+    -e 's/{EXPERT_METHOD}/reconcile/' "$brief" > "$brief.tmp" && mv "$brief.tmp" "$brief"
   out=$(run_spawn "$home" "$fakebin" "$id" "$proj" claude --mode direct-PR --yolo off)
   status=$?
-  [ "$status" -ne 0 ] || fail "spawn with a leftover optional placeholder should exit non-zero"
-  assert_contains "$out" "unfilled: Target" "a leftover optional Target placeholder was not refused"
+  [ "$status" -ne 0 ] || fail "spawn with a leftover required placeholder should exit non-zero"
+  assert_contains "$out" "unfilled: Outside check" "a leftover required placeholder was not refused"
 
   id=depth-fenced-ship
   mkdir -p "$home/data/$id"

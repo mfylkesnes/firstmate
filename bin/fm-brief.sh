@@ -9,7 +9,7 @@
 # direct address) and `{FIRSTMATE_SPEC}`
 # under `## Firstmate spec` (build instructions, which are never the captain's
 # intent). Below `{FIRSTMATE_SPEC}` the spec also carries the `Outcome:`,
-# `Rawest source:`, `Expert method:`, `Target:`, and `Outside check:` lines
+# `Rawest source:`, `Expert method:`, an empty optional `Target:`, and `Outside check:` lines
 # Firstmate fills. bin/fm-dod-lib.sh
 # owns those spec depth lines and what each must name, and the no-mistakes
 # `--intent` contract the subsections feed; bin/fm-spawn.sh

@@ -211,7 +211,7 @@ test_ship_modes_generate_clean_briefs() {
       || fail "$id: brief did not record its machine-readable delivery contract line"
     assert_grep "{TASK}" "$brief" "$id: brief missing the {TASK} placeholder"
     assert_grep "{FIRSTMATE_SPEC}" "$brief" "$id: brief missing the {FIRSTMATE_SPEC} placeholder"
-    for depth in 'Outcome: {OUTCOME}' 'Rawest source: {RAWEST_SOURCE}' 'Expert method: {EXPERT_METHOD}' 'Target: {TARGET}' 'Outside check: {OUTSIDE_CHECK}'; do
+    for depth in 'Outcome: {OUTCOME}' 'Rawest source: {RAWEST_SOURCE}' 'Expert method: {EXPERT_METHOD}' 'Target:' 'Outside check: {OUTSIDE_CHECK}'; do
       grep -qxF "$depth" "$brief" || fail "$id: brief missing the spec depth line '$depth'"
     done
     assert_grep "## Captain's intent" "$brief" "$id: brief missing Captain's intent subsection"
@@ -1098,7 +1098,7 @@ test_scout_and_secondmate_scaffold() {
   assert_grep "## Captain's intent" "$brief" "scout brief missing Captain's intent subsection"
   assert_grep "## Firstmate spec" "$brief" "scout brief missing Firstmate spec subsection"
   assert_grep "{FIRSTMATE_SPEC}" "$brief" "scout brief missing the spec placeholder"
-  for depth in 'Outcome: {OUTCOME}' 'Rawest source: {RAWEST_SOURCE}' 'Expert method: {EXPERT_METHOD}' 'Target: {TARGET}' 'Outside check: {OUTSIDE_CHECK}'; do
+  for depth in 'Outcome: {OUTCOME}' 'Rawest source: {RAWEST_SOURCE}' 'Expert method: {EXPERT_METHOD}' 'Target:' 'Outside check: {OUTSIDE_CHECK}'; do
     grep -qxF "$depth" "$brief" || fail "scout brief missing the spec depth line '$depth'"
   done
 

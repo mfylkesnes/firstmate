@@ -231,25 +231,27 @@ fm_ship_rule_one() {  # <no-mistakes|direct-PR|local-only> <task-id> [branch] [<
 # specific target, and an outside check run against reality (a reconciliation,
 # a real run, a count from the records), never the worker's own self-review.
 # An optional range line names another discipline's view or a red team when
-# one helps. bin/fm-brief.sh scaffolds every line that has a placeholder from
-# fm_brief_spec_depth_scaffold. bin/fm-spawn.sh refuses a first ship or scout
-# spawn while fm_brief_spec_depth_unfilled names any required line that is
-# missing or empty, or any line that still holds its placeholder.
-# Each record is `<label>|<placeholder>|<required: 1 or 0>`.
+# one helps. bin/fm-brief.sh scaffolds every line marked scaffolded from
+# fm_brief_spec_depth_scaffold; only the required lines carry a placeholder, and
+# the optional Target line is scaffolded empty. bin/fm-spawn.sh refuses a first
+# ship or scout spawn while fm_brief_spec_depth_unfilled names any required line
+# that is missing, empty, or still holds its placeholder.
+# Each record is `<label>|<placeholder>|<required: 1 or 0>|<scaffolded: 1 or 0>`.
 fm_brief_spec_depth_fields() {
   printf '%s\n' \
-    'Outcome|{OUTCOME}|1' \
-    'Rawest source|{RAWEST_SOURCE}|1' \
-    'Expert method|{EXPERT_METHOD}|1' \
-    'Target|{TARGET}|0' \
-    'Outside check|{OUTSIDE_CHECK}|1' \
-    'Range||0'
+    'Outcome|{OUTCOME}|1|1' \
+    'Rawest source|{RAWEST_SOURCE}|1|1' \
+    'Expert method|{EXPERT_METHOD}|1|1' \
+    'Target||0|1' \
+    'Outside check|{OUTSIDE_CHECK}|1|1' \
+    'Range||0|0'
 }
 
 fm_brief_spec_depth_scaffold() {
-  local label placeholder _required
-  while IFS='|' read -r label placeholder _required; do
-    [ -z "$placeholder" ] || printf '%s: %s\n' "$label" "$placeholder"
+  local label placeholder _required scaffolded
+  while IFS='|' read -r label placeholder _required scaffolded; do
+    [ "$scaffolded" = 1 ] || continue
+    if [ -n "$placeholder" ]; then printf '%s: %s\n' "$label" "$placeholder"; else printf '%s:\n' "$label"; fi
   done < <(fm_brief_spec_depth_fields)
 }
 
