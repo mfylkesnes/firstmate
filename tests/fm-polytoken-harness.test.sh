@@ -794,6 +794,10 @@ Exercise Polytoken dispatch.
 
 ## Firstmate spec
 Verify launch and delivery behavior.
+Outcome: the behavior under test holds.
+Rawest source: the fixture brief.
+Expert method: the real spawn path.
+Outside check: the spawn result.
 EOF
   printf 'polytoken\n' > "$home/config/crew-harness"
   printf 'version: 4\nproviders:\n  zai:\n    auth:\n      type: static_key\n      key: k\nmodels:\n  zai/glm-5.3-flash:\n    enabled: true\ndefault_permission_matcher: standard\n' \

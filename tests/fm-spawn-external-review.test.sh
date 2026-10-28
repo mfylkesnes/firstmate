@@ -45,6 +45,10 @@ Ship a change through the review tool.
 
 ## Firstmate spec
 Exercise the external review spawn path.
+Outcome: the behavior under test holds.
+Rawest source: the fixture brief.
+Expert method: the real spawn path.
+Outside check: the spawn result.
 
 # Definition of done
 Delivery contract: mode=direct-PR forge=external
