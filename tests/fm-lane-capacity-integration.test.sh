@@ -147,10 +147,14 @@ SH
 case "\${2:-}" in
   hw.memsize) echo 107374182400 ;;
   kern.memorystatus_level) cat "$case_dir/v/avail_gb" ;;
+  kern.memorystatus_vm_pressure_level) echo 1 ;;
   *) exec /usr/sbin/sysctl "\$@" ;;
 esac
 SH
   chmod +x "$fakebin/sysctl"
+  # A constant swap-in counter, so this host's real swapping cannot close the swap gate.
+  printf '#!/usr/bin/env bash\necho "Swapins: 0."\n' > "$fakebin/vm_stat"
+  chmod +x "$fakebin/vm_stat"
   mkdir -p "$case_dir/proc"
   if [ -d /proc ] && [ -r /proc/loadavg ]; then
     for e in /proc/*; do
