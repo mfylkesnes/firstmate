@@ -1,0 +1,6 @@
+ok - a real spawn is admitted with room, deferred with exit 75 and its item queued while a gate is closed or clearing, and admitted after it reopens
+ok - eight spawns inside one publish interval admit exactly the damped budget (2) and defer the rest
+ok - the real watcher publishes the verdict, damps growth by 2 per publish (2 then 4 open), and the next spawn is admitted on it (1794216501 -> 1794216503 -> 1794216504)
+ok - a real idle worker is ranked finished -> cleanup with its age, a busy one is not, and neither is stopped (  - idle: finished, idle 1h, next cleanup (status:done 1h, procs:1, no agent for 2s))
+ok - fixed caps with room and over their floors print byte-identical report, document, and admission output to 5c935cfbaf8a
+skip: live load: opt-in; set FM_TEST_LANE_LIVE_LOAD=1 to run
