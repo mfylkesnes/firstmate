@@ -110,6 +110,11 @@ Exercise Herdr.app backend auto-detection for $1.
 
 ## Firstmate spec
 Verify the real spawn path selects hc.
+
+Outcome: the behavior under test holds.
+Rawest source: the fixture brief.
+Expert method: the real spawn path.
+Outside check: the spawn result.
 EOF
 }
 

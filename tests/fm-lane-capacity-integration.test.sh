@@ -67,6 +67,11 @@ Run a short task for $2.
 
 Exercise lane capacity admission.
 
+Outcome: the behavior under test holds.
+Rawest source: the fixture brief.
+Expert method: the real spawn path.
+Outside check: the spawn result.
+
 Delivery contract: mode=no-mistakes
 EOF
 }
