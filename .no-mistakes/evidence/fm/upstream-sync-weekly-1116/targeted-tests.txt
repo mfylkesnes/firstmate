@@ -1,0 +1,23 @@
+PASS fm-watcher-lock
+PASS fm-stow-guard
+PASS fm-park
+FAIL fm-remote-job rc=1
+ok - worker identity binds the canonical configured code root
+ok - stale ownership is reclaimed without signaling a reused pid
+ok - the worker enforces the job timeout and publishes its result
+ok - the worker expires queued jobs before they can mutate
+ok - queued jobs receive a fresh bounded execution window
+ok - a queued short command preempts a running long poll instead of waiting its window
+ok - a poll re-armed after preemption reads the same cursor with nothing lost
+not ok - remote job did not complete within its bounded wait
+FAIL fm-pr-merge rc=124
+ok - a refused or failed merge reports no outcome
+ok - a GitLab merge refused before the forge call reports no outcome
+ok - a merge a main home performs itself leaves one durable wake naming the PR
+ok - a queued GitHub merge stays silent and leaves confirmation to the armed poll
+ok - distinct merged PRs for one task retain distinct captain-facing wakes
+ok - an uncommitted marker retry preserves at least one durable outcome
+ok - a secondmate home that cannot report upward says so instead of merging in silence
+ok - fm-pr-merge proceeds when the home carries no backlog at all
+PASS fm-session-lock-ancestry
+PASS fm-spawn-manual-pr-text
