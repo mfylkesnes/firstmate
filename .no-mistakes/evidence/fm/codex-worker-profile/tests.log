@@ -1,0 +1,80 @@
+== fm-codex-worker-home-live
+ok - codex-cli 0.164.0: the launch switches turn the default-on connectors off
+ok - codex-cli 0.164.0: a clean worker home is proven
+ok - codex-cli 0.164.0: a home with Drive and Slack plugins is refused
+ok - codex-cli 0.164.0: the readback refuses an MCP server a trusted project adds
+ok - codex-cli 0.164.0: codex mcp list accepts the launch switches
+# all fm-codex-worker-home-live tests passed
+== fm-spawn-dispatch-profile
+ok - codex omits max for models without the catalog capability
+ok - a codex crewmate requests no hook layer and keeps its turn-end signal
+ok - a codex secondmate keeps its project hooks and uses automatic approval review
+ok - Codex defaults remain bypass; persistent fallback is direct and invalid values refuse
+ok - grok receives --model and --reasoning-effort profile flags
+ok - grok omits unsupported max reasoning effort
+ok - grok omits unsupported xhigh reasoning effort
+ok - cursor receives its model-qualified reasoning class and exact task workspace
+ok - cursor refuses model ids absent from its resolved binary's live catalog
+ok - cursor preserves the requested model when its live catalog is unreachable
+ok - opencode receives the model and effort through its config
+ok - opencode without an effort keeps the model pin and omits variant
+ok - opencode emits the variant for an effort the openai family exposes
+ok - opencode omits the variant for an effort outside the model family's list
+ok - opencode 1.x keeps the --model flag and the variant-only config
+ok - opencode 1.x without an effort keeps its permission-only launch config
+ok - opencode probe and launch share the same resolved executable path
+ok - opencode with an unparseable version falls back to the 1.x launch path
+ok - opencode 2 delivery gate accepts an auto-submitted brief without pressing Enter
+ok - opencode 2 delivery gate sends exactly one Enter for a brief left in the composer
+ok - opencode 2 delivery gate keeps polling an unknown composer and sends one Enter once it reads pending
+ok - opencode 2 delivery gate sends its one Enter at the deadline when the composer only reads unknown
+ok - opencode 2 delivery gate fails the spawn when the brief turn never starts
+ok - opencode 1.x launches keep their pre-gate delivery
+ok - opencode provisions a busy-state plugin for every detected major, including the 1.x fallback
+ok - native effort validator checks harness and model as separate axes
+ok - Ultra is explicit for native Pi and Pi-signed, including direct-PR, and refuses unsupported profiles before provisioning
+ok - batch dispatch preserves native Ultra in metadata and launch flags
+ok - Pi scout spawn enters the recorded worktree before launch
+ok - pi receives --model and --thinking max profile flags
+ok - Pi launch probing omits --tui-mode on older Pi and preserves it on supporting Pi
+ok - pi-signed shares Pi launch semantics while preserving its configured and recorded identity
+ok - pi-signed refuses safely and actionably when the selected executable is unavailable
+ok - pi-signed is a distinct persistent secondmate runtime with shared Pi supervision semantics
+ok - seeded Pi/pi-signed secondmate launches carry session --approve when advertised
+ok - ordinary Pi worker launches omit --approve
+ok - Pi approve probing omits --approve when help does not advertise it
+ok - Pi and pi-signed ship and scout launches carry the configured tool exclusions
+ok - Claude ship and scout launches carry the configured tool exclusions ahead of the prompt
+ok - a Claude exclusion list adds only its own flag to the launch
+== fm-control-relaunch
+ok - fm-spawn --relaunch: tracked opencode wiring is retired as on main
+ok - fm-control removes the dialog file after exit and after relaunch
+ok - fm-control exit removes the dialog file before it releases the control lock
+ok - fm-control relaunch: a same-harness relaunch replaces the agent in the same endpoint and worktree
+ok - fm-control relaunch: a recorded PR stays valid to the armed merge poll
+ok - fm-control relaunch: pending composer text refuses before the exit command is typed
+ok - fm-control relaunch: an unreadable composer fails safe before the exit command is typed
+ok - fm-control relaunch: a linked spawning home preserves committed and unfinished work in the recorded copy
+ok - fm-control relaunch: a recorded worktree that is a standalone clone relaunches
+ok - fm-control relaunch: the project primary checkout is refused after stop, leaving no replacement
+ok - fm-control relaunch: an armed PR poll survives replacement launch publication
+ok - fm-control relaunch: a traced replacement keeps an armed PR poll authenticated
+ok - fm-control relaunch: delivery and concurrent task metadata publication serialize
+ok - fm-control relaunch: disabling tracing clears metadata and pane context
+ok - fm-control relaunch: progress and the Firstmate-worktree worker identity reach the replacement
+ok - fm-control relaunch: the progress note's inbox listing is silent on an empty inbox
+ok - fm-control relaunch: a ship task refuses without the progress note its replacement needs
+ok - fm-control relaunch: switching harness is one ordinary relaunch, and the old wiring goes with the old agent
+ok - fm-control relaunch: a refused relaunch onto polytoken keeps the project's own hook layer and the running agent
+ok - fm-control relaunch: a refused polytoken profile leaves the running agent untouched
+ok - fm-spawn --relaunch: retiring a raw polytoken launch's wiring keeps the project's own layers
+ok - fm-control relaunch: a harness switch resets model and effort unless they are named too
+ok - fm-control relaunch: a prefixed recorded harness can switch adapters transactionally
+ok - fm-control relaunch: a prefixed command requires an explicit replacement harness
+ok - fm-control relaunch: a same-harness relaunch keeps the profile axes it was running with
+ok - native Ultra relaunch preserves its profile and rejects an unsupported model before stopping
+ok - fm-control relaunch: a signed-out worker account pin refuses before the old agent stops
+ok - fm-control relaunch: the replacement follows the home's current worker account pin
+ok - fm-control relaunch: a declared account list keeps the account the task records
+ok - fm-control relaunch: only an explicit --account moves a task to another declared account
+ok - fm-control relaunch: undeclared, newline-split, signed-out, unrecorded, retired, and wrong-runner accounts refuse before the old agent stops
