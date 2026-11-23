@@ -1312,7 +1312,42 @@ test_exclude_tools_refusals_happen_before_the_agent_stops() {
   assert_contains "$out" "config/crew-exclude-tools" "refusal must name the config file"
   [ "$(cat "$dir/fake/command")" = pi ] || fail "an unhonorable exclusion list stopped the running agent"
   [ ! -s "$dir/fake/literal" ] || fail "a refused relaunch sent lifecycle input"
+  mkdir -p "$dir/home/config/codex-worker-home"
+  printf '%s\n' '[plugins."slack@openai-curated"]' 'enabled = true' > "$dir/home/config/codex-worker-home/config.toml"
+  out=$(run_control "$dir" "$id" relaunch --harness codex --note "switch runtime"); rc=$?
+  expect_code 1 "$rc" "relaunching onto codex with an unproven worker home must refuse"
+  assert_contains "$out" "configures plugins.slack@openai-curated" "refusal must name the worker home entry"
+  [ "$(cat "$dir/fake/command")" = pi ] || fail "an unproven codex worker home stopped the running agent"
+  [ ! -s "$dir/fake/literal" ] || fail "a refused relaunch sent lifecycle input"
   pass "fm-control relaunch: exclusion-list refusals happen before the running agent stops"
+}
+
+test_codex_worker_home_follows_the_relaunch() {
+  local dir out rc whome id=rl-codex-home
+  dir=$(new_case codex-home "$id")
+  add_ship_task "$dir" "$id" codex
+  printf codex > "$dir/fake/command"
+  printf codex > "$dir/fake/becomes"
+  cat > "$dir/fakebin/codex" <<'SH'
+#!/usr/bin/env bash
+case "${1:-} ${2:-}" in
+'mcp list') printf '[]\n' ;;
+'features list') printf 'apps stable false\nplugins stable false\nremote_plugin stable false\n' ;;
+*) exit 2 ;;
+esac
+SH
+  chmod +x "$dir/fakebin/codex"
+  mkdir -p "$dir/home/config/codex-worker-home"
+  printf '%s\n' 'model = "gpt-5"' > "$dir/home/config/codex-worker-home/config.toml"
+  printf '%s\n' 'mcp__srv__sendTool' > "$dir/home/config/crew-exclude-tools"
+  whome=$(cd "$dir/home/config/codex-worker-home" && pwd -P)
+  out=$(run_control "$dir" "$id" relaunch --note "keep the worker home"); rc=$?
+  expect_code 0 "$rc" "a codex relaunch with a clean worker home should succeed"$'\n'"$out"
+  assert_contains "$(cat "$dir/fake/literal")" "CODEX_HOME='$whome' codex " \
+    "the relaunched codex worker must start from the worker home"
+  assert_contains "$(cat "$dir/fake/literal")" "--disable apps --disable plugins --disable remote_plugin" \
+    "the relaunched codex worker must keep connectors and plugins off"
+  pass "fm-control relaunch: a codex replacement keeps the proven worker home"
 }
 
 test_explicit_model_wins_over_the_recorded_one() {
@@ -3287,6 +3322,7 @@ test_secondmate_account_pin_follows_relaunch_and_refuses_before_stop
 test_pi_exclude_tools_follow_the_relaunch
 test_claude_exclude_tools_follow_the_relaunch
 test_exclude_tools_refusals_happen_before_the_agent_stops
+test_codex_worker_home_follows_the_relaunch
 test_explicit_model_wins_over_the_recorded_one
 test_relaunch_onto_an_unverified_harness_is_refused
 test_prior_harness_turnend_registry_entry_is_cleared

@@ -1643,9 +1643,31 @@ It does not apply to a secondmate's own agent, which neither reads nor refuses o
 | --- | --- |
 | `claude` | Launches with `--disallowedTools '<names>'`, so each listed tool's schema is absent from every model request, not only denied at call time. An entry may also be an MCP server name such as `mcp__<server>`, which hides all of that server's tools. Applies to every ship and scout spawn and relaunch. |
 | `pi`, `pi-signed` | Hides listed tool names, MCP tools included, on every ship and scout spawn and relaunch. |
+| `codex` | Codex cannot hide single tools, so a ship or scout launch proceeds only with a proven [Codex worker home](#codex-worker-home-configcodex-worker-home), which has no connector, plugin, or MCP server at all; without one the launch refuses with an error naming `config/crew-exclude-tools`. |
 | Every other runtime, and a raw launch command | The launch refuses with an error naming `config/crew-exclude-tools`, because that runtime has no verified way to hide tools. |
 
 A relaunch validates the list and the replacement runtime's support before stopping the running worker, so an exclusion-list refusal preserves the running agent.
+
+### Codex worker home (config/codex-worker-home)
+
+The optional local, gitignored `config/codex-worker-home` directory is a Codex home used only by this home's Codex ship and scout workers, so they run without the connectors, plugins, and MCP servers a desktop Codex configuration carries.
+When it exists, every Codex ship or scout spawn and relaunch starts with `CODEX_HOME` pointing at it and with Codex's `apps`, `plugins`, and `remote_plugin` features switched off on the command line, whether or not `config/crew-exclude-tools` lists anything.
+When it is absent, Codex launches are unchanged, and a non-empty `config/crew-exclude-tools` refuses them.
+
+Create it with a `config.toml` holding only model, reasoning, and project-trust settings, plus a `[features]` table setting `apps`, `plugins`, and `remote_plugin` to `false`.
+Leave out every `[plugins]`, `[marketplaces]`, `[mcp_servers]`, `[apps]`, and `[connectors]` entry, and any notify or desktop setting copied from a desktop configuration.
+Sign it in once, either with `CODEX_HOME=<firstmate home>/config/codex-worker-home codex login` for a separate sign-in, or by linking its `auth.json` to the desktop home's `auth.json` so both share one sign-in; Codex writes refreshed credentials through that link.
+On the first launch in each repository Codex asks to trust the folder and records the answer in this home's `config.toml`.
+
+Before each launch, before any local copy or task record is created, Firstmate proves the home and refuses the launch with an error naming `config/codex-worker-home` when it cannot:
+
+- `config.toml` must be a readable regular file with no table or key under `mcp_servers`, `plugins`, `marketplaces`, `apps`, or `connectors`, no `apps`, `plugins`, or `remote_plugin` feature set to anything but `false`, and no multi-line string.
+- The installed `codex`, run from the project directory (the task's local copy on a relaunch) with this home and the launch's feature switches, must list no enabled MCP server and report `apps`, `plugins`, and `remote_plugin` off, so system, managed, and trusted-project configuration layers are covered too.
+- A missing `codex` executable, a failed or unreadable readback, or any other doubt refuses the launch.
+
+Every enabled MCP server refuses, because Firstmate cannot prove what an arbitrary server can do.
+The worker home does not apply to a secondmate's own agent or to a raw launch command, and the T3 Code backend refuses a Codex launch while it exists, because T3 starts Codex with its own provider configuration.
+The live guard `tests/fm-codex-worker-home-live.test.sh` checks the proof against the installed `codex`; the measured result is in [`docs/verification/runtime-backends.md`](verification/runtime-backends.md#codex-worker-home).
 
 ### Trimming Claude tool schemas
 

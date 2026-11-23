@@ -1997,6 +1997,131 @@ test_exclude_tools_non_pi_runtime_refuses_non_empty_list() {
   pass "a runtime that cannot hide tools, or a raw launch, refuses a non-empty exclusion list"
 }
 
+# config/codex-worker-home: a fake codex answers the effective-configuration
+# readback from FM_FAKE_CODEX_* and logs each call's home, directory, and args.
+write_fake_codex_readback() {  # <fakebin>
+  cat > "$1/codex" <<'SH'
+#!/usr/bin/env bash
+[ -z "${FM_FAKE_CODEX_LOG:-}" ] || printf 'home=%s cwd=%s args=%s\n' "${CODEX_HOME:-}" "$PWD" "$*" >> "$FM_FAKE_CODEX_LOG"
+case "${1:-} ${2:-}" in
+'mcp list')
+  [ "${FM_FAKE_CODEX_MCP_STATUS:-0}" -eq 0 ] || exit "$FM_FAKE_CODEX_MCP_STATUS"
+  printf '%s\n' "${FM_FAKE_CODEX_MCP_JSON:-[]}"
+  ;;
+'features list')
+  printf '%b\n' "${FM_FAKE_CODEX_FEATURES:-apps    stable    false\nhooks    stable    true\nplugins    stable    false\nremote_plugin    stable    false}"
+  ;;
+*) exit 2 ;;
+esac
+SH
+  chmod +x "$1/codex"
+}
+
+write_codex_worker_home() {  # <home> <config.toml line>...
+  local home=$1
+  shift
+  mkdir -p "$home/config/codex-worker-home"
+  printf '%s\n' "$@" > "$home/config/codex-worker-home/config.toml"
+}
+
+test_codex_worker_home_lets_codex_honor_exclusions() {
+  local rec id out status launch whome proj_real kindflag
+  for kindflag in --ship --scout; do
+    id="excl-codex-home-${kindflag#--}-z9k"
+    rec=$(make_spawn_case "excl-codex-home-${kindflag#--}" codex "$id")
+    read_case_record "$rec"
+    write_fake_codex_readback "$FAKEBIN_DIR"
+    write_exclude_file "$HOME_DIR" 'mcp__claude_ai_Slack__slack_send_message'
+    write_codex_worker_home "$HOME_DIR" 'model = "gpt-5"' '' '[features]' 'apps = false' '' \
+      "[projects.\"$PROJ_DIR\"]" 'trust_level = "trusted"'
+    whome=$(cd "$HOME_DIR/config/codex-worker-home" && pwd -P)
+    proj_real=$(cd "$PROJ_DIR" && pwd -P)
+    if [ "$kindflag" = --scout ]; then
+      out=$(FM_FAKE_CODEX_LOG="$CASE_DIR/codex.log" run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --scout)
+    else
+      out=$(FM_FAKE_CODEX_LOG="$CASE_DIR/codex.log" run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR")
+    fi
+    status=$?
+    expect_code 0 "$status" "codex $kindflag spawn with a clean worker home should succeed"$'\n'"$out"
+    launch=$(fm_test_launch_unframe "$(cat "$LAUNCH_LOG")")
+    assert_contains "$launch" "CODEX_HOME='$whome' codex " "codex $kindflag launch must start from the worker home"
+    assert_contains "$launch" "--disable apps --disable plugins --disable remote_plugin --disable hooks" \
+      "codex $kindflag launch must switch connectors and plugins off"
+    assert_grep "home=$whome cwd=$proj_real args=mcp list --json --disable apps --disable plugins --disable remote_plugin" \
+      "$CASE_DIR/codex.log" "the MCP readback must run from the project with the worker home and launch switches"
+    assert_grep "home=$whome cwd=$proj_real args=features list --disable apps --disable plugins --disable remote_plugin" \
+      "$CASE_DIR/codex.log" "the feature readback must run from the project with the worker home and launch switches"
+  done
+
+  # A present worker home is used, and proven, even with no exclusion list.
+  id=excl-codex-home-nolist-z9l
+  rec=$(make_spawn_case excl-codex-home-nolist codex "$id")
+  read_case_record "$rec"
+  write_fake_codex_readback "$FAKEBIN_DIR"
+  write_codex_worker_home "$HOME_DIR" 'model = "gpt-5"'
+  out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR")
+  expect_code 0 "$?" "codex spawn with a worker home and no list should succeed"$'\n'"$out"
+  assert_contains "$(cat "$LAUNCH_LOG")" "codex-worker-home" "a present worker home must be used without a list"
+  pass "codex ship and scout launches honor exclusions through a proven worker home"
+}
+
+test_codex_worker_home_refuses_what_it_cannot_prove() {
+  local rec id out status n=0 entry
+  local -a cases=(
+    'static|[plugins."slack@openai-curated"]|enabled = true|configures plugins.slack@openai-curated'
+    'static|[mcp_servers.gmail]|command = "gmail-mcp"|configures mcp_servers.gmail'
+    'static|[plugins."google-drive@openai-curated"]|enabled = true|configures plugins.google-drive@openai-curated'
+    'static|mcp_servers.drive.command = "x"||configures mcp_servers.drive.command'
+    'static|[features]|apps = true|does not set features.apps to false'
+    'static|notes = """|x"""|opens a multi-line string'
+    'mcp|[{"name":"slack","enabled":true}]||enabled MCP servers: slack'
+    'mcp|not json||unparsable codex mcp list output'
+    'mcpfail|||codex mcp list failed'
+    'features|apps stable true\nplugins stable false\nremote_plugin stable false||feature apps enabled'
+    'features|plugins stable false||did not report: apps remote_plugin'
+  )
+  for entry in "${cases[@]}"; do
+    n=$((n + 1))
+    IFS='|' read -r kind a b want <<EOF
+$entry
+EOF
+    id="excl-codex-unproven-$n-z9m"
+    rec=$(make_spawn_case "excl-codex-unproven-$n" codex "$id")
+    read_case_record "$rec"
+    write_fake_codex_readback "$FAKEBIN_DIR"
+    write_exclude_file "$HOME_DIR" 'mcp__claude_ai_Gmail__send_message'
+    case "$kind" in
+    static) write_codex_worker_home "$HOME_DIR" 'model = "gpt-5"' "$a" "$b" ;;
+    *) write_codex_worker_home "$HOME_DIR" 'model = "gpt-5"' ;;
+    esac
+    case "$kind" in
+    mcp) out=$(FM_FAKE_CODEX_MCP_JSON="$a" run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR") ;;
+    mcpfail) out=$(FM_FAKE_CODEX_MCP_STATUS=1 run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR") ;;
+    features) out=$(FM_FAKE_CODEX_FEATURES="$a" run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR") ;;
+    *) out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR") ;;
+    esac
+    status=$?
+    expect_code 1 "$status" "case $n ($kind) must refuse the codex launch"$'\n'"$out"
+    assert_contains "$out" "config/codex-worker-home cannot be proven free of connectors, plugins, and MCP servers" \
+      "case $n refusal must name the worker home"
+    assert_contains "$out" "$want" "case $n refusal must name the reason"
+    [ ! -s "$LAUNCH_LOG" ] || fail "case $n launched codex from an unproven worker home"
+    [ ! -e "$HOME_DIR/state/$id.meta" ] || fail "case $n refusal still wrote a task record"
+  done
+
+  # Without a worker home a non-empty list still refuses, naming the remedy.
+  id=excl-codex-nohome-z9n
+  rec=$(make_spawn_case excl-codex-nohome codex "$id")
+  read_case_record "$rec"
+  write_fake_codex_readback "$FAKEBIN_DIR"
+  write_exclude_file "$HOME_DIR" 'mcp__claude_ai_Gmail__send_message'
+  out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR")
+  expect_code 1 "$?" "codex without a worker home must refuse a non-empty list"
+  assert_contains "$out" "create config/codex-worker-home" "the refusal must name the worker home remedy"
+  [ ! -s "$LAUNCH_LOG" ] || fail "codex launched without a worker home despite the list"
+  pass "codex refuses a worker home it cannot prove free of connectors, plugins, and MCP servers"
+}
+
 test_pi_exclude_tools_malformed_entry_refuses_before_endpoint() {
   local rec id out status bad n=0
   for bad in 'two words' 'a,b' 'mcp__srv__tool;rm' '*' 'mcp__srv__*Admin' 'quote'"'"'d' "mcp__srv__\$X"; do
@@ -3094,6 +3219,8 @@ test_claude_exclude_tools_leave_the_rest_of_the_launch_unchanged
 test_pi_exclude_tools_worker_registry_reports
 test_pi_exclude_tools_absent_and_empty_lists
 test_exclude_tools_non_pi_runtime_refuses_non_empty_list
+test_codex_worker_home_lets_codex_honor_exclusions
+test_codex_worker_home_refuses_what_it_cannot_prove
 test_pi_exclude_tools_malformed_entry_refuses_before_endpoint
 test_pi_exclude_tools_read_failure_refuses_before_launch
 test_pi_exclude_tools_do_not_leak_across_homes_or_to_secondmates
