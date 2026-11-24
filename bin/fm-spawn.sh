@@ -501,8 +501,9 @@
 # Worker tool exclusions:
 #   docs/configuration.md "Worker tool exclusions" owns config/crew-exclude-tools
 #   and its operator contract. Resolve it with bin/fm-exclude-tools-lib.sh
-#   before provisioning; __PIEXCLUDE__ and __CLAUDEEXCLUDE__ below own the Pi and
-#   Claude launch substitutions.
+#   before provisioning; __PIEXCLUDE__, __CLAUDEEXCLUDE__, __CODEXWORKERHOME__,
+#   and __CODEXWORKERFLAGS__ below own the Pi, Claude, and Codex launch
+#   substitutions.
 # Worker account pin (config/claude-account, config/pi-account):
 #   Opt-in. docs/configuration.md's "Worker account pin" section owns unpinned
 #   account selection. A present file pins every supported launch of
@@ -551,6 +552,12 @@
 #     __PIEXCLUDE__ optional ` --exclude-tools '<comma-joined names>'` from
 #                  config/crew-exclude-tools on Pi/pi-signed ship and scout
 #                  launches (supplies its own leading space, empty otherwise)
+#     __CODEXWORKERHOME__ optional `CODEX_HOME='<abs config/codex-worker-home>' `
+#                  prefix on a Codex ship or scout launch once
+#                  bin/fm-exclude-tools-lib.sh proves that home (supplies its
+#                  own trailing space, empty otherwise)
+#     __CODEXWORKERFLAGS__ the library's FM_CODEX_WORKER_FLAGS plus a trailing
+#                  space on that same launch, empty otherwise
 #     __CLAUDEEXCLUDE__ optional `--disallowedTools '<comma-joined names>' ` from
 #                  config/crew-exclude-tools on Claude ship and scout launches
 #                  (supplies its own trailing space, empty otherwise). Claude
@@ -2973,7 +2980,7 @@ launch_template() {
     if [ "$kind" = secondmate ]; then
       printf '%s' 'codex __MODELFLAG____EFFORTFLAG____CODEXAPPROVALFLAG__ "$(__OPINPUT__ encode launch-brief < __BRIEF__)"'
     else
-      printf '%s' 'codex __MODELFLAG____EFFORTFLAG____CODEXAPPROVALFLAG__ --disable hooks -c "notify=[\"bash\",\"-c\",\"touch __TURNEND__\"]" "$(__OPINPUT__ encode launch-brief < __BRIEF__)"'
+      printf '%s' '__CODEXWORKERHOME__codex __MODELFLAG____EFFORTFLAG____CODEXAPPROVALFLAG__ __CODEXWORKERFLAGS__--disable hooks -c "notify=[\"bash\",\"-c\",\"touch __TURNEND__\"]" "$(__OPINPUT__ encode launch-brief < __BRIEF__)"'
     fi
     ;;
   opencode) printf '%s' 'OPENCODE_CONFIG_CONTENT='\''{"permission":{"*":"allow"}__EFFORTFLAG__}'\'' __OPENCODEBIN__ __MODELFLAG__--prompt "$(__OPINPUT__ encode launch-brief < __BRIEF__)"' ;;
@@ -3369,9 +3376,23 @@ fi
 
 # config/crew-exclude-tools (header above): refuse before worker provisioning
 # if this launch cannot honor the list. Secondmate agents are not covered.
+# A Codex ship or scout also resolves config/codex-worker-home here, proven
+# from the directory it will start in (the recorded worktree on a relaunch).
 EXCLUDE_TOOLS=
+CODEX_WORKER_HOME=
 if [ "$KIND" != secondmate ]; then
-  EXCLUDE_TOOLS=$(fm_exclude_tools_check "$HARNESS" "$RAW_LAUNCH" "$CONFIG") || exit 1
+  if [ "$RELAUNCH" -eq 1 ]; then
+    exclude_probe=$RELAUNCH_WT
+  else
+    case "$PROJ" in
+    projects/*) exclude_probe=$PROJECTS/${PROJ#projects/} ;;
+    *) exclude_probe=$PROJ ;;
+    esac
+  fi
+  EXCLUDE_TOOLS=$(fm_exclude_tools_check "$HARNESS" "$RAW_LAUNCH" "$CONFIG" "$exclude_probe") || exit 1
+  if [ "$HARNESS" = codex ] && [ "$RAW_LAUNCH" -eq 0 ]; then
+    CODEX_WORKER_HOME=$(fm_codex_worker_home_resolve "$CONFIG" "$exclude_probe" "$EXCLUDE_TOOLS") || exit 1
+  fi
 fi
 
 case "$HARNESS" in
@@ -3557,6 +3578,10 @@ if [ "$BACKEND" = t3code ]; then
   fi
   if [ "$HARNESS" = claude ] && [ "$CLAUDE_PERMISSION_MODE" != bypass ]; then
     echo "error: backend=t3code runs claude at T3's full-access runtime mode and cannot honor config/claude-permission-mode=$CLAUDE_PERMISSION_MODE; remove that file or choose another backend" >&2
+    exit 1
+  fi
+  if [ -n "$CODEX_WORKER_HOME" ]; then
+    echo "error: backend=t3code starts codex with its provider instance's own Codex home and cannot apply config/codex-worker-home; choose another backend" >&2
     exit 1
   fi
   if [ "$HARNESS" = codex ] && [ "$CODEX_APPROVAL_MODE" != bypass ]; then
@@ -7580,6 +7605,14 @@ case "$LAUNCH" in
   ;;
 esac
 LAUNCH=${LAUNCH//__CODEXAPPROVALFLAG__/$CODEX_APPROVAL_FLAG}
+CODEX_WORKER_ENV=
+CODEX_WORKER_ARGS=
+if [ -n "$CODEX_WORKER_HOME" ]; then
+  CODEX_WORKER_ENV="CODEX_HOME=$(shell_quote "$CODEX_WORKER_HOME") "
+  CODEX_WORKER_ARGS="$FM_CODEX_WORKER_FLAGS "
+fi
+LAUNCH=${LAUNCH//__CODEXWORKERHOME__/$CODEX_WORKER_ENV}
+LAUNCH=${LAUNCH//__CODEXWORKERFLAGS__/$CODEX_WORKER_ARGS}
 if [ "$KEEP_AI_TRAILERS" = 1 ]; then
   LAUNCH=${LAUNCH//__CLAUDEATTRIBUTION__/}
 else

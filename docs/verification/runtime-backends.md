@@ -714,6 +714,34 @@ The token-free live guard refreshes the per-version evidence and fails naming th
 bin/fm-test-run.sh tests/fm-claude-tool-exclude-live.test.sh
 ```
 
+## Codex worker home
+
+Verified 2026-11-23 on macOS with codex-cli 0.164.0.
+[Codex worker home](../configuration.md#codex-worker-home-configcodex-worker-home) owns the contract; this record owns the measurements.
+
+Findings that shape the contract:
+
+- With no configuration, `codex features list` reports `apps`, `plugins`, and `remote_plugin` as `true`, so a home that merely omits plugin entries still gets the account's connectors; `--disable apps --disable plugins --disable remote_plugin` turns all three off, and a trusted project's `.codex/config.toml` setting them `true` does not override the command-line switches.
+- A trusted project's `.codex/config.toml` adds its `[mcp_servers]` entries to the session, and `codex mcp list --json` run from that project with the same `CODEX_HOME` lists them, so the proof reads the effective configuration back from the project directory in addition to scanning the worker home's file.
+- `codex mcp list --json` and `codex features list` need no sign-in and make no server connection.
+- `codex debug prompt-input` from a home carrying a desktop configuration lists Gmail, Google Drive, and Slack plugins in the model-visible input; from a worker home with the launch switches it lists none.
+- Codex writes refreshed credentials through a symbolic-link `auth.json`: `codex login --with-api-key` into a home whose `auth.json` was a link left the link in place and wrote the target file.
+
+A real scout launch built by `bin/fm-spawn.sh` with a worker home and a non-empty `config/crew-exclude-tools` ran on Codex with this launch prefix and switches:
+
+```text
+CODEX_HOME='<home>/config/codex-worker-home' codex --model 'gpt-6-astra' --dangerously-bypass-approvals-and-sandbox --disable apps --disable plugins --disable remote_plugin --disable hooks -c "notify=[...]" "<launch brief>"
+```
+
+The running process carried that `CODEX_HOME`, the worker read the file it was asked for, and its session record's tool list held only Codex's built-in tools (`exec`, `wait`, `sleep`, `clock`, `request_user_input`, and the agent-collaboration tools), with no Slack, Gmail, or Drive tool.
+The same spawn refused, before creating a task record, with a desktop configuration as the worker home (`config.toml line <n> configures plugins.<plugin>`) and with no worker home (`the codex runtime cannot hide tools`).
+
+The token-free live guard refreshes the per-version evidence and fails naming the Codex version if the readback or switches change:
+
+```sh
+bin/fm-test-run.sh tests/fm-codex-worker-home-live.test.sh
+```
+
 ## Secondmate busy contract
 
 Verified 2026-09-22 on this host with Claude Code 2.1.278, OpenCode 1.18.31, Pi 0.86.1, and Grok 1.0.40.

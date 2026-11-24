@@ -92,8 +92,9 @@
 #              omp profile pin (bin/fm-omp-profile-lib.sh) before the old agent
 #              stops.
 #              The same pre-stop refusal applies to this home's worker tool
-#              exclusions (bin/fm-exclude-tools-lib.sh): a malformed list, or a
-#              replacement runtime that cannot hide the listed tools.
+#              exclusions (bin/fm-exclude-tools-lib.sh): a malformed list, a
+#              replacement runtime that cannot hide the listed tools, or a
+#              Codex replacement whose config/codex-worker-home is unproven.
 #              Refused on t3code before anything is stopped: a T3 thread
 #              keeps its conversation, so a new turn or a provider change on
 #              it continues the same agent rather than a fresh one
@@ -1109,9 +1110,14 @@ resolve_relaunch_profile() {
   fi
   # Likewise config/crew-exclude-tools: a malformed file, or a replacement
   # runtime that cannot hide the listed tools, refuses here, before the old
-  # agent stops. Secondmate agents are not covered.
+  # agent stops, as does a Codex replacement whose config/codex-worker-home
+  # cannot be proven from the task's local copy. Secondmate agents are not
+  # covered.
   if [ "$KIND" != secondmate ]; then
-    fm_exclude_tools_check "$TARGET_HARNESS" 0 "${FM_CONFIG_OVERRIDE:-$FM_HOME/config}" >/dev/null || return 1
+    fm_exclude_tools_check "$TARGET_HARNESS" 0 "${FM_CONFIG_OVERRIDE:-$FM_HOME/config}" "$WT" >/dev/null || return 1
+    if [ "$TARGET_HARNESS" = codex ]; then
+      fm_codex_worker_home_resolve "${FM_CONFIG_OVERRIDE:-$FM_HOME/config}" "$WT" "" >/dev/null || return 1
+    fi
   fi
 }
 
